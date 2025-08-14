@@ -2,7 +2,7 @@
 clientes = {}     
 productos = {}    
 historial = {}    
-counters = {     
+counters = {      
     "producto": 1000,
     "mov": 1
 }
@@ -25,16 +25,36 @@ ESTADOS = {
     "PAGADO": "Pagado"
 }
 
+# Tipos de movimientos
+TIPOS_MOV = {
+    "DEPOSITO": "Depósito",
+    "RETIRO": "Retiro"
+}
+
 def nuevo_id_producto():
     counters["producto"] += 1
     return str(counters["producto"])
 
+def nuevo_id_mov():
+    counters["mov"] += 1
+    return str(counters["mov"])
+
 def pedir(mensaje, requerido=True):
-    """Pide un dato por teclado."""
     valor = input(mensaje).strip()
     while requerido and not valor:
         valor = input("Dato requerido. " + mensaje).strip()
     return valor
+
+def registrar_historial(producto_id, tipo_mov, valor):
+    if producto_id not in historial:
+        historial[producto_id] = {}
+    mov_id = nuevo_id_mov()
+    historial[producto_id][mov_id] = {
+        "id": mov_id,
+        "fecha": "2025-08-13",
+        "tipo_mov": tipo_mov,
+        "valor": valor
+    }
 
 def crear_cliente():
     print("=== Crear cliente ===")
@@ -98,6 +118,47 @@ def abrir_producto(cc):
     clientes[cc]["productos_ids"][producto_id] = True
     print(f"Producto '{PORTAFOLIO[tipo]}' creado con ID {producto_id}.")
 
+def seleccionar_cuenta(cc):
+    """Devuelve el ID de una cuenta de ahorro/corriente."""
+    for pid in clientes[cc]["productos_ids"]:
+        info = productos[pid]
+        if info["tipo"] in ("cta_ahorros", "cta_corriente"):
+            print(f" * {pid} - {PORTAFOLIO[info['tipo']]} | Saldo: {info['saldo']}")
+    return pedir("Ingrese el ID de la cuenta: ")
+
+def depositar():
+    print("=== Depositar dinero ===")
+    cc = pedir("CC del cliente: ")
+    if cc not in clientes:
+        print("Cliente no encontrado.")
+        return
+    pid = seleccionar_cuenta(cc)
+    if pid not in productos:
+        print("Producto no encontrado.")
+        return
+    valor = float(pedir("Valor a depositar: "))
+    productos[pid]["saldo"] += valor
+    registrar_historial(pid, TIPOS_MOV["DEPOSITO"], valor)
+    print(f"Depósito realizado. Nuevo saldo: {productos[pid]['saldo']}")
+
+def retirar():
+    print("=== Retirar dinero ===")
+    cc = pedir("CC del cliente: ")
+    if cc not in clientes:
+        print("Cliente no encontrado.")
+        return
+    pid = seleccionar_cuenta(cc)
+    if pid not in productos:
+        print("Producto no encontrado.")
+        return
+    valor = float(pedir("Valor a retirar: "))
+    if valor > productos[pid]["saldo"]:
+        print("Fondos insuficientes.")
+        return
+    productos[pid]["saldo"] -= valor
+    registrar_historial(pid, TIPOS_MOV["RETIRO"], -valor)
+    print(f"Retiro realizado. Nuevo saldo: {productos[pid]['saldo']}")
+
 def menu():
     salir = False
     while not salir:
@@ -119,11 +180,11 @@ def menu():
             if cc:
                 abrir_producto(cc)
         elif opcion == "2":
-            print("Opción 2: Depositar dinero (pendiente)")
+            depositar()
         elif opcion == "3":
             print("Opción 3: Solicitar crédito (pendiente)")
         elif opcion == "4":
-            print("Opción 4: Retirar dinero (pendiente)")
+            retirar()
         elif opcion == "5":
             print("Opción 5: Pago cuota crédito (pendiente)")
         elif opcion == "6":
